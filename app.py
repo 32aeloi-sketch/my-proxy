@@ -3,18 +3,18 @@ import requests
 
 app = Flask(__name__)
 
-# The destination for the proxy
-TARGET_URL = "https://lite.duckduckgo.com"
+# Target for the proxy
+TARGET = "https://lite.duckduckgo.com"
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>', methods=['GET', 'POST'])
 def proxy(path):
-    url = f"{TARGET_URL}{path}"
+    url = f"{TARGET}{path}"
     
-    # We tell DuckDuckGo we don't want compressed data (Gzip)
+    # Copy headers but skip 'Host' to avoid security errors
     headers = {key: value for (key, value) in request.headers if key != 'Host'}
-    headers['Accept-Encoding'] = 'identity' 
 
+    # Fetch the page from DuckDuckGo
     resp = requests.request(
         method=request.method,
         url=url,
@@ -24,8 +24,9 @@ def proxy(path):
         allow_redirects=True
     )
 
-    # Send the clean text back to your browser
-    return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type'))
+    # CRITICAL FIX: Use .text instead of .content. 
+    # This forces the 'requests' library to unzip the data for us automatically.
+    return Response(resp.text, status=resp.status_code, content_type=resp.headers.get('Content-Type'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
